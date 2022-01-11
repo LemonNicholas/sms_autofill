@@ -11,6 +11,7 @@ import android.content.IntentSender;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.credentials.Credential;
@@ -101,7 +102,8 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
                 requestHint();
                 break;
             case "listenForCode":
-                final String smsCodeRegexPattern = call.argument("smsCodeRegexPattern");
+
+//                final String smsCodeRegexPattern = call.argument("smsCodeRegexPattern");
                 SmsRetrieverClient client = SmsRetriever.getClient(activity);
                 Task<Void> task = client.startSmsRetriever();
 
@@ -109,10 +111,8 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
                     @Override
                     public void onSuccess(Void aVoid) {
                         unregisterReceiver();// unregister existing receiver
-                        broadcastReceiver = new SmsBroadcastReceiver(new WeakReference<>(SmsAutoFillPlugin.this),
-                                smsCodeRegexPattern);
-                        activity.registerReceiver(broadcastReceiver,
-                                new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION));
+                        broadcastReceiver = new SmsBroadcastReceiver(new WeakReference<>(SmsAutoFillPlugin.this));
+                        activity.registerReceiver(broadcastReceiver, new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION));
                         result.success(null);
                     }
                 });
@@ -313,11 +313,10 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
     private static class SmsBroadcastReceiver extends BroadcastReceiver {
 
         final WeakReference<SmsAutoFillPlugin> plugin;
-        final String smsCodeRegexPattern;
 
-        private SmsBroadcastReceiver(WeakReference<SmsAutoFillPlugin> plugin, String smsCodeRegexPattern) {
+        private SmsBroadcastReceiver(WeakReference<SmsAutoFillPlugin> plugin) {
             this.plugin = plugin;
-            this.smsCodeRegexPattern = smsCodeRegexPattern;
+//            this.smsCodeRegexPattern = smsCodeRegexPattern;
         }
 
         @Override
@@ -328,7 +327,6 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
                 } else {
                     plugin.get().activity.unregisterReceiver(this);
                 }
-
                 Bundle extras = intent.getExtras();
                 Status status;
                 if (extras != null) {
@@ -337,10 +335,9 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
                         if (status.getStatusCode() == CommonStatusCodes.SUCCESS) {
                             // Get SMS message contents
                             String message = (String) extras.get(SmsRetriever.EXTRA_SMS_MESSAGE);
-                            Pattern pattern = Pattern.compile(smsCodeRegexPattern);
+                            Pattern pattern = Pattern.compile("\\d{4,6}");
                             if (message != null) {
                                 Matcher matcher = pattern.matcher(message);
-
                                 if (matcher.find()) {
                                     plugin.get().setCode(matcher.group(0));
                                 } else {

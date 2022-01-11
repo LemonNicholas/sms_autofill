@@ -31,8 +31,9 @@ class SmsAutoFill {
     return hint;
   }
 
-  Future<void> listenForCode({String smsCodeRegexPattern: '\\d{4,6}'}) async {
-    await _channel.invokeMethod('listenForCode', <String, String>{'smsCodeRegexPattern': smsCodeRegexPattern});
+  Future<void> listenForCode() async {
+
+    await _channel.invokeMethod('listenForCode');
   }
 
   Future<void> unregisterListener() async {
@@ -125,7 +126,7 @@ class _PinFieldAutoFillState extends State<PinFieldAutoFill> with CodeAutoFill {
         }
       }
     });
-    listenForCode(smsCodeRegexPattern: widget.smsCodeRegexPattern);
+    listenForCode();
     super.initState();
   }
 
@@ -405,9 +406,8 @@ mixin CodeAutoFill {
       this.code = code;
       codeUpdated();
     });
-    (smsCodeRegexPattern == null)
-        ? _autoFill.listenForCode()
-        : _autoFill.listenForCode(smsCodeRegexPattern: smsCodeRegexPattern);
+     _autoFill.listenForCode();
+
   }
 
   Future<void> cancel() async {
@@ -446,7 +446,7 @@ class _TextFieldPinAutoFillState extends State<TextFieldPinAutoFill> with CodeAu
   void initState() {
     code = widget.currentCode;
     codeUpdated();
-    listenForCode(smsCodeRegexPattern: widget.smsCodeRegexPattern);
+    listenForCode();
     super.initState();
   }
 
