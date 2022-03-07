@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.os.Build;
 import android.os.Bundle;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -113,6 +114,7 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
                         unregisterReceiver();// unregister existing receiver
                         broadcastReceiver = new SmsBroadcastReceiver(new WeakReference<>(SmsAutoFillPlugin.this));
                         activity.registerReceiver(broadcastReceiver, new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION));
+                        activity.registerReceiver(broadcastReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
                         result.success(null);
                     }
                 });
@@ -319,8 +321,41 @@ public class SmsAutoFillPlugin implements FlutterPlugin, ActivityAware, MethodCa
 //            this.smsCodeRegexPattern = smsCodeRegexPattern;
         }
 
+        private String parseCode(String message) {
+            Pattern p = Pattern.compile("\\b\\d{6}\\b");
+            Matcher m = p.matcher(message);
+            String code = "";
+            while (m.find()) {
+                code = m.group(0);
+            }
+            return code;
+        }
+
         @Override
         public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")){
+                Bundle bundle = intent.getExtras();           //---get the SMS message passed in---
+                SmsMessage[] msgs = null;
+                String msg_from;
+                if (bundle != null){
+                    //---retrieve the SMS message received---
+                    try{
+                        Object[] pdus = (Object[]) bundle.get("pdus");
+                        msgs = new SmsMessage[pdus.length];
+                        for(int i=0; i<msgs.length; i++){
+                            msgs[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
+                            msg_from = msgs[i].getOriginatingAddress();
+                            String msgBody = msgs[i].getMessageBody();
+                            plugin.get().setCode(parseCode(msgBody));
+//                            Log.wtf(SmsListener.class.getSimpleName(), "msgBody : "+parseCode(msgBody));
+//                            channel.invokeMethod("receivedOtp", parseCode(msgBody));
+                        }
+                    }catch(Exception e){
+//                            Log.d("Exception caught",e.getMessage());
+                    }
+                }
+                return;
+            }
             if (SmsRetriever.SMS_RETRIEVED_ACTION.equals(intent.getAction())) {
                 if (plugin.get() == null) {
                     return;
